@@ -1,7 +1,7 @@
 {
-  "visible": true,
+  "visible": false,
   "label": "God Mode",
-  "bypassBackend": false,
+  "bypassBackend": true,
   "verticlePosition": "top",
   "horizontalPosition": "left",
   "devDetails": {

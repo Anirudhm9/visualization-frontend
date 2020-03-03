@@ -55,8 +55,8 @@ class API {
   }
 
   login = (data, callback) => {
-    axiosInstance.post('login', data).then(response => {
-      return performCallback(callback, true)
+    axiosInstance.post('admin/login', data).then(response => {
+      return callback(response.data.data)
     }).catch(error => {
       errorHelper(error, "login")
     })
@@ -74,6 +74,29 @@ class API {
     logout();
     performCallback(callback);
   }
+
+  getBlocks = (callback) => {
+    axiosInstance.get('/rcm/getBlock', {
+    }).then(response => {
+      return callback(response.data.data)
+    }).catch(error => {
+      errorHelper(error)
+    })
+  }
+
+  uploadImage = (data, callback) => {
+    axiosInstance.post('/upload/uploadImage', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
+    }).then(response => {
+      notify("Image Uploaded")
+      return callback(response.data.data.imageFileURL.original)
+    }).catch(error => {
+      errorHelper(error)
+    })
+  }
+
 }
 const instance = new API();
 export default instance;

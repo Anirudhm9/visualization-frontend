@@ -2,7 +2,7 @@
  *  Created by Sanchit Dang
  ***/
 import React, { useState, useContext } from 'react';
-import { Link } from 'react-router-dom';
+// import { Link } from 'react-router-dom';
 import { TextField, Paper, makeStyles, Typography, Button, Box, Grid } from '@material-ui/core';
 import { LoginContext } from 'contexts';
 import { notify } from 'components';
@@ -49,16 +49,20 @@ export const Login = () => {
   const [emailId, setEmailId] = useState('');
   const [password, setPassword] = useState('');
   const { devMode, loginStatus, setLoginStatus, setAccessToken } = useContext(LoginContext);
+  const responseHandler = (data) => {
+    setLoginStatus(true);
+    setAccessToken(data.accessToken);
+  }
   const performLogin = () => {
     if (DevModeConfig.bypassBackend) {
       setLoginStatus(true);
       setAccessToken('dummyToken');
     } else {
       let details = {
-        username: (devMode ? (DevModeConfig.devDetails !== undefined ? DevModeConfig.devDetails.user : '') : emailId),
+        emailId: (devMode ? (DevModeConfig.devDetails !== undefined ? DevModeConfig.devDetails.user : '') : emailId),
         password: (devMode ? (DevModeConfig.devDetails !== undefined ? DevModeConfig.devDetails.password : '') : password)
       };
-      API.login(details, setLoginStatus);
+      API.login(details, responseHandler);
     }
   };
 
@@ -105,7 +109,7 @@ export const Login = () => {
               <TextField variant="outlined" margin="normal" required fullWidth id="email" label="Email Address" name="email" autoComplete="email" onChange={e => setEmailId(e.target.value)} autoFocus />
               <TextField variant="outlined" margin="normal" required fullWidth name="password" label="Password" type="password" id="password" onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
               <Button fullWidth variant="contained" color="primary" className={classes.buttons} onClick={validationCheck}>Login</Button>
-              <Button fullWidth variant="contained" color="primary" className={classes.buttons} component={Link} to='/register'>Sign Up</Button>
+              {/* <Button fullWidth variant="contained" color="primary" className={classes.buttons} component={Link} to='/register'>Sign Up</Button> */}
             </form>
           </Paper>
         </Grid>
