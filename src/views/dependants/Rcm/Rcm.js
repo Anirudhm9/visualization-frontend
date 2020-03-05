@@ -1,12 +1,19 @@
 import React, { useEffect, useContext, useState } from 'react';
-import { Grid, Typography, Dialog, DialogTitle, DialogContent, TextField, MenuItem, makeStyles, Chip, Button, Tooltip } from '@material-ui/core';
+import { Grid, Typography, TextField, MenuItem, makeStyles, Chip, Button, Tooltip, Drawer, List, Divider, ListItem, ListItemIcon, ListItemText, Collapse, IconButton } from '@material-ui/core';
 import { HeaderElements, notify, LoadingScreen } from 'components';
 import { LayoutContext } from 'contexts';
 import ReactEcharts from 'echarts-for-react';
 import { API } from 'helpers/index';
 import { SketchPicker } from 'react-color';
-import IconButton from '@material-ui/core/IconButton';
+
 import PhotoCamera from '@material-ui/icons/PhotoCamera';
+import LabelIcon from '@material-ui/icons/Label';
+import CodeIcon from '@material-ui/icons/Code';
+import HistoryIcon from '@material-ui/icons/History';
+import PersonIcon from '@material-ui/icons/Person';
+import SettingsEthernetIcon from '@material-ui/icons/SettingsEthernet';
+import ExpandLess from '@material-ui/icons/ExpandLess';
+import ExpandMore from '@material-ui/icons/ExpandMore';
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -19,6 +26,10 @@ const useStyles = makeStyles(theme => ({
   },
   table: {
     minWidth: 650,
+  },
+  drawer: {
+    width: 420,
+    flexShrink: 0,
   },
 }));
 
@@ -52,14 +63,20 @@ export const Rcm = () => {
   const [open, setOpen] = useState(false);
   const [dialogData, setDialogData] = useState();
   const [option, setOption] = useState();
-  const [store, setStore] = useState([]);
+  const [store, setStore] = useState();
   const [selectedGraph, setSelectedGraph] = useState('Clustered');
   const [type, setType] = useState('Requirement');
   const [shape, setShape] = useState('circle');
   const [color, setColor] = useState('#a5745b');
   const [loading, setLoading] = useState(false);
-  const [chipData, setChipData] = React.useState([
-  ]);
+  const [selectedNode, setSelectedNode] = useState('');
+  const [authorTempValue, setAuthorTempValue] = useState('');
+  const [reviewTempValue, setReviewTempValue] = useState('');
+  const [chipData, setChipData] = React.useState([]);
+  const [author, setAuthor] = useState(false);
+  const [review, setReview] = useState(false);
+  const [parents, setParents] = useState(false);
+  const [children, setChildren] = useState(false);
 
   useEffect(() => {
     API.getBlocks(setStore);
@@ -79,7 +96,7 @@ export const Rcm = () => {
         }
       }
     ];
-    store.map(item => {
+    store && store.blocks.map(item => {
       const returnColor = (data) => {
         let color = '';
         let color_ = '';
@@ -110,7 +127,7 @@ export const Rcm = () => {
           return color;
         }
       };
-    
+
       const returnShape = (data) => {
         let shape = '';
         let shape_ = '';
@@ -163,6 +180,9 @@ export const Rcm = () => {
         }
         uniqueId.push(item.child.id);
         temp.name = item.child.id;
+        temp.mongoId = item._id;
+        temp.author = item.child.author ? item.child.author : '';
+        temp.review = item.child.review ? item.child.review : '';
         temp.itemStyle = { color: returnColor(nodeType) };
         temp.value = item.child.value;
         temp.draggable = true;
@@ -186,7 +206,7 @@ export const Rcm = () => {
     setDataToDisplay(data);
     setLinksToDisplay(link);
     setRequirements(uniqueParent);
-  }, [store, chipData]);
+  }, [store, chipData, selectedNode]);
 
   useEffect(() => {
     if (requirements && requirements.length !== 0) {
@@ -195,7 +215,7 @@ export const Rcm = () => {
           tooltip: { show: true, formatter: '{c}' },
           animationDurationUpdate: 750,
           legend: [{ data: requirements.map(function (a) { return a; }) }],
-          animationEasingUpdate: 'quinticInOut',
+          animationEasingUpdate: 'none',
           series: [
             {
               type: 'graph',
@@ -256,7 +276,11 @@ export const Rcm = () => {
       }
       return parents;
     });
+    setSelectedNode(data.data.mongoId);
     dialog.name = data.data.name;
+    dialog.author = data.data.author;
+    dialog.review = data.data.review;
+    dialog.mongoId = data.data.mongoId;
     dialog.parents = parents;
     dialog.children = children;
     setDialogData(dialog);
@@ -314,6 +338,119 @@ export const Rcm = () => {
       notify('Type already exists');
     }
   };
+
+  const handleClick = (data) => {
+    switch (data) {
+    case 'Author': setAuthor(!author);
+      break;
+    case 'Last Reviewed By': setReview(!review);
+      break;
+    case 'Parents': setParents(!parents);
+      break;
+    case 'Children': setChildren(!children);
+      break;
+    default: //Do Nothing
+    }
+  };
+
+  useEffect(() => {
+    if (open === false) {
+      setAuthor(false);
+      setReview(false);
+      setParents(false);
+      setChildren(false);
+      setSelectedNode('');
+    }
+  }, [open]);
+
+  const submitAuthor = () => {
+    API.updateBlock({ blockId: store._id, author: authorTempValue, review: '', arrayItemId: selectedNode }, setStore);
+    setAuthorTempValue('');
+  };
+
+  const submitReview = () => {
+    API.updateBlock({ blockId: store._id, author: '', review: reviewTempValue, arrayItemId: selectedNode }, setStore);
+    setReviewTempValue('');
+  };
+
+  let sideList = () => (
+    <div
+      className={classes.list}
+      role="presentation"
+    >
+      <List>
+        <ListItem>
+          <ListItemText>{dialogData && dialogData.name}</ListItemText>
+        </ListItem>
+        {['Author', 'Last Reviewed By', 'Parents', 'Children'].map((text, index) => (
+          <ListItem button key={text} onClick={() => handleClick(text)}>
+            <ListItemIcon>{index === 0 ? <PersonIcon /> : (index === 1 ? <HistoryIcon /> : index === 2 ? <SettingsEthernetIcon /> : <CodeIcon />)}</ListItemIcon>
+            <ListItemText primary={text} />
+            {text === 'Parents' ? (parents ? <ExpandLess /> : <ExpandMore />) : text === 'Children' ? (children ? <ExpandLess /> : <ExpandMore />) : text === 'Last Reviewed By' ? (review ? <ExpandLess /> : <ExpandMore />) : (author ? <ExpandLess /> : <ExpandMore />)}
+
+          </ListItem>
+        ))}
+      </List>
+      <Divider />
+      <Collapse in={parents} timeout="auto" unmountOnExit>
+        <List>
+          {dialogData && dialogData.parents[0] !== null ? dialogData.parents.map((text, index) => (
+            <ListItem button key={index}>
+              <ListItemIcon><LabelIcon /></ListItemIcon>
+              <ListItemText primary={text} />
+            </ListItem>
+          )) :
+            <ListItem button key={Math.random()}>
+              <ListItemIcon><LabelIcon /></ListItemIcon>
+              <ListItemText primary={'None'} />
+            </ListItem>}
+        </List>
+      </Collapse>
+      <Collapse in={children} timeout="auto" unmountOnExit>
+        <List>
+          {dialogData && dialogData.children.length !== 0 ? dialogData.children.map((text, index) => (
+            <ListItem button key={index}>
+              <ListItemIcon><LabelIcon /></ListItemIcon>
+              <ListItemText primary={text} />
+            </ListItem>
+          )) :
+            <ListItem button key={Math.random()}>
+              <ListItemIcon><LabelIcon /></ListItemIcon>
+              <ListItemText primary={'None'} />
+            </ListItem>
+          }
+        </List>
+      </Collapse>
+      <Collapse in={author} timeout="auto" unmountOnExit>
+        <List>
+          {dialogData &&
+            <>
+              <ListItem button>
+                <TextField variant='outlined' label='Author' defaultValue={dialogData.author} onChange={(e) => setAuthorTempValue(e.target.value)}></TextField>
+              </ListItem>
+              <ListItem>
+                <Button variant='outlined' color='secondary' onClick={submitAuthor}>Submit</Button>
+              </ListItem>
+            </>
+          }
+        </List>
+      </Collapse>
+      <Collapse in={review} timeout="auto" unmountOnExit>
+        <List>
+          {dialogData &&
+            <>
+              <ListItem button>
+                <TextField variant='outlined' label='Reviewer' defaultValue={dialogData.review} onChange={(e) => setReviewTempValue(e.target.value)} ></TextField>
+              </ListItem>
+              <ListItem>
+                <Button variant='outlined' color='secondary' onClick={submitReview}>Submit</Button>
+              </ListItem>
+            </>
+          }
+        </List>
+      </Collapse>
+    </div>
+  );
 
   useEffect(() => {
     setHeaderElements(<HeaderElements>
@@ -423,7 +560,7 @@ export const Rcm = () => {
       <Grid container direction='column' item xs={10}>
         <Grid item xs={12} >
           {option && <ReactEcharts option={option} onEvents={selectedGraph === 'Organized' ? onEvents : null} style={{ height: '80vh' }} />}
-          {dialogData &&
+          {/* {dialogData &&
             <Dialog onClose={() => setOpen(false)} aria-labelledby="simple-dialog-title" open={open}>
               <DialogTitle id="simple-dialog-title">{'Name: ' + dialogData.name}</DialogTitle>
               <DialogContent>
@@ -441,8 +578,11 @@ export const Rcm = () => {
                 </Typography>
               </DialogContent>
             </Dialog>
-          }
+          } */}
         </Grid >
+        <Drawer className={classes.drawer} anchor="right" open={open} onClose={() => setOpen(false)}>
+          {sideList()}
+        </Drawer>
       </Grid>
     </Grid >
   );

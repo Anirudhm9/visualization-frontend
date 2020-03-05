@@ -97,6 +97,15 @@ class API {
     })
   }
 
+  updateBlock = (data,callback) => {
+    axiosInstance.put('/rcm/updateBlock', data, {
+    }).then(response => {
+      return callback(response.data.data)
+    }).catch(error => {
+      errorHelper(error)
+    })
+  }
+
 }
 const instance = new API();
 export default instance;
