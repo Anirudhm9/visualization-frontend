@@ -677,8 +677,7 @@ export const Rcm = () => {
   };
 
   const dialogHandleSubmit = () => {
-    API.deleteBlock({ blockId: selectedDelete });
-    API.getAllBlocks(setAllBlocks);
+    API.deleteBlock({ blockId: selectedDelete }, setAllBlocks);
     setDialogOpen(false);
   };
   const step1 =

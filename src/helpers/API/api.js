@@ -118,10 +118,11 @@ class API {
     })
   }
 
-  deleteBlock = (data) => {
+  deleteBlock = (data, callback) => {
     axiosInstance.delete('/rcm/deleteBlock', { data: data }, {
     }).then(response => {
       notify('Deleted');
+      return callback(response.data.data);
     }).catch(error => {
       errorHelper(error)
     })
