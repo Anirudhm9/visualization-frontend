@@ -75,9 +75,20 @@ class API {
     performCallback(callback);
   }
 
-  getBlocks = (callback) => {
-    axiosInstance.get('/rcm/getBlock', {
+  getSpecificBlocks = (data, callback) => {
+    axiosInstance.post('/rcm/getBlock', data, {
     }).then(response => {
+      console.log(response.data.data)
+      return callback(response.data.data)
+    }).catch(error => {
+      errorHelper(error)
+    })
+  }
+
+  getAllBlocks = (callback) => {
+    axiosInstance.get('/rcm/getAllBlocks', {
+    }).then(response => {
+      console.log(response.data);
       return callback(response.data.data)
     }).catch(error => {
       errorHelper(error)
@@ -97,10 +108,20 @@ class API {
     })
   }
 
-  updateBlock = (data,callback) => {
+  updateBlock = (data, callback) => {
     axiosInstance.put('/rcm/updateBlock', data, {
     }).then(response => {
+      notify('Updated');
       return callback(response.data.data)
+    }).catch(error => {
+      errorHelper(error)
+    })
+  }
+
+  deleteBlock = (data) => {
+    axiosInstance.delete('/rcm/deleteBlock', { data: data }, {
+    }).then(response => {
+      notify('Deleted');
     }).catch(error => {
       errorHelper(error)
     })
