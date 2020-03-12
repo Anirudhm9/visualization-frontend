@@ -8,6 +8,7 @@ import { Home } from './dependants/Home/Home';
 import { MobileMenu } from './dependants/mobileMenu/mobileMenu';
 import { Example } from './dependants/Example/Example';
 import { Rcm } from './dependants/Rcm/Rcm';
+import { Maps } from './dependants/Map/Map';
 export {
   Example,
   Login,
@@ -15,5 +16,6 @@ export {
   Home,
   MobileMenu,
   FourOFour,
-  Rcm
+  Rcm,
+  Maps
 };

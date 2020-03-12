@@ -30,6 +30,15 @@
       "subMenuItems": []
     },
     {
+      "name": "Maps",
+      "type": "button",
+      "icon": "map",
+      "controller": "/maps",
+      "customTitle": "Maps",
+      "isFavourite": true,
+      "subMenuItems": []
+    },
+    {
       "name": "Logout",
       "type": "logout",
       "icon": "logout",

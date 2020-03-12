@@ -13,8 +13,11 @@
     "date-fns": "^2.0.0-beta.5",
     "echarts": "^4.6.0",
     "echarts-for-react": "^2.0.15-beta.1",
+    "echarts-leaflet": "^1.1.0",
+    "echartslayer": "^0.1.6",
     "eslint-utils": "^1.4.2",
     "idb": "^4.0.5",
+    "leaflet": "^1.6.0",
     "lodash": "^4.17.15",
     "lodash.template": "^4.5.0",
     "material-design-icons-updated": "^4.8.2",
@@ -29,7 +32,8 @@
     "react-scripts": "3.0.1",
     "socket.io-client": "^2.3.0",
     "typeface-roboto": "0.0.54",
-    "typescript": "^3.5.1"
+    "typescript": "^3.5.1",
+    "xlsx": "^0.15.5"
   },
   "scripts": {
     "start": "react-scripts start",
