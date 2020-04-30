@@ -30,6 +30,7 @@ import AntPath from 'react-leaflet-ant-path';
 import 'react-leaflet-markercluster/dist/styles.min.css';
 // import { HeatmapLayer } from 'react-leaflet-heatmap-layer';
 import HeatmapLayer from './assets/HeatmapLayer';
+import { PieChart } from '../PieChart/PieChart';
 // import randomColor from 'randomcolor';
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -147,6 +148,7 @@ export const MappingTool = (props) => {
     reverse: false,
     paused: false,
   });
+  const [pieData, setPieData] = useState();
   const headers = [
     { label: '_id', key: '_id' },
     { label: 'First Name', key: 'firstName' },
@@ -255,6 +257,17 @@ export const MappingTool = (props) => {
       }
       console.log(tempData);
       setTrajectories(tempData);
+      if (tempData !== undefined && tempData !== null && tempData.length <= 10) {
+        let tempPie = [];
+        tempData.map((item) => {
+          tempPie.push({
+            name: item[uniqueEntity],
+            value: item.latLongs.length
+          });
+          return item;
+        });
+        setPieData(tempPie);
+      }
       setElevations(tempElevation);
       if (data.visualizations) {
         let keys = Object.keys(data.visualizations);
@@ -323,6 +336,38 @@ export const MappingTool = (props) => {
   };
 
   const handleTrajectory = () => {
+    if (data && selectedEntity !== '' && entityValue !== '') {
+      let consists = false;
+      trajectoryData.map(element => {
+        if (element.value === entityValue && element.entity === selectedEntity) {
+          consists = true;
+        }
+        else {
+          // Do nothing
+        }
+        return consists;
+      });
+      if (!consists) {
+        let tempData = { latLongs: [], color: '' };
+        let tempTrajectory = {};
+        tempTrajectory.color = color;
+        tempTrajectory.entity = selectedEntity;
+        tempTrajectory.value = entityValue;
+        tempData.color = color;
+        setTrajectoryData([...trajectoryData, tempTrajectory]);
+        setEntityValue('');
+        setSelectedEntity('');
+      }
+      else {
+        notify('Config already exists');
+      }
+    }
+    else {
+      notify('Required fields can not be empty');
+    }
+  };
+
+  const handleTrajectoryForPie = (selectedEntity, entityValue, color) => {
     if (data && selectedEntity !== '' && entityValue !== '') {
       let consists = false;
       trajectoryData.map(element => {
@@ -754,31 +799,31 @@ export const MappingTool = (props) => {
   const returnVisualization = (viz) => {
     if (data) {
       switch (viz) {
-      case 'Clusters': return (
-        <MarkerClusterGroup >
-          {data && data.data.map((item, index) => {
-            return (
-              <Marker key={index} position={[item[(data.config.location[0].lat)], item[(data.config.location[0].long)]]} >
-                {/* icon={image[(item.user.covidStatus)] === '' ? createIcon(item.user.covidStatus) : createIconViaLink(image[(item.user.covidStatus)])}> */}
-                <Popup>
-                  {data.config.entities.map((entity) => (
-                    <Typography key={Math.random()}>{`${entity} : ${item[entity]}`}</Typography>
-                  ))}
-                </Popup>
-              </Marker>
-            );
-          })}
-        </MarkerClusterGroup>);
-      case 'Heatmap': return (
-        <HeatmapLayer
-          fitBoundsOnLoad
-          fitBoundsOnUpdate
-          points={data.data}
-          longitudeExtractor={m => m[(data.config.location[0].long)]}
-          latitudeExtractor={m => m[(data.config.location[0].lat)]}
-          intensityExtractor={m => parseFloat(m[elevation] ? m[elevation] : m[data.config.entities[0]])} />
-      );
-      case 'Trajectory': return (
+        case 'Clusters': return (
+          <MarkerClusterGroup >
+            {data && data.data.map((item, index) => {
+              return (
+                <Marker key={index} position={[item[(data.config.location[0].lat)], item[(data.config.location[0].long)]]} >
+                  {/* icon={image[(item.user.covidStatus)] === '' ? createIcon(item.user.covidStatus) : createIconViaLink(image[(item.user.covidStatus)])}> */}
+                  <Popup>
+                    {data.config.entities.map((entity) => (
+                      <Typography key={Math.random()}>{`${entity} : ${item[entity]}`}</Typography>
+                    ))}
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MarkerClusterGroup>);
+        case 'Heatmap': return (
+          <HeatmapLayer
+            fitBoundsOnLoad
+            fitBoundsOnUpdate
+            points={data.data}
+            longitudeExtractor={m => m[(data.config.location[0].long)]}
+            latitudeExtractor={m => m[(data.config.location[0].lat)]}
+            intensityExtractor={m => parseFloat(m[elevation] ? m[elevation] : m[data.config.entities[0]])} />
+        );
+        case 'Trajectory': return (
           <>
             {trajectories.map((item, i) => (
               <AntPath key={i} positions={item.latLongs} options={{ color: item.color && item.color !== '' ? item.color : 'red', reverse: trajectoryOptions.reverse, paused: trajectoryOptions.paused, delay: 800 }} >
@@ -790,8 +835,8 @@ export const MappingTool = (props) => {
               </AntPath>
             ))}
           </>
-      );
-      default: return null;
+        );
+        default: return null;
       }
     }
   };
@@ -845,7 +890,7 @@ export const MappingTool = (props) => {
             </Toolbar>
           </Grid>
           {isItDesktop ?
-            <Grid item xs={12} style={{ zIndex: 2 }}>
+            <Grid item xs={7} style={{ zIndex: 2 }}>
               <Paper className={classes.desktopMap}>
                 <Map center={mapCentre} zoom={mapZoom} style={{ height: '82vh', width: '100%' }}>
                   <TileLayer
@@ -865,7 +910,7 @@ export const MappingTool = (props) => {
               </Paper>
             </Grid>
             :
-            <Grid item xs={12} style={{ zIndex: 2 }}>
+            <Grid item xs={7} style={{ zIndex: 2 }}>
               <Paper className={classes.map}>
                 <Map center={mapCentre} zoom={mapZoom} style={{ height: '72vh', width: '100%' }}>
                   <TileLayer
@@ -885,6 +930,19 @@ export const MappingTool = (props) => {
               </Paper>
             </Grid>
           }
+          <Grid item xs={4}>
+            {uniqueEntity === undefined || uniqueEntity === null || uniqueEntity === '' ? <Typography>No entity selected</Typography> : 
+              trajectories.length > 10 ? <Typography>Too much data for pie chart!</Typography> : 
+              <PieChart title={uniqueEntity} data={pieData}
+                setFilter={(filterObj) => {
+                  handleTrajectoryForPie(uniqueEntity, filterObj.name, filterObj.color);
+                }}
+                reset={() => {
+                  setTrajectoryData([]);
+                }}
+              />
+            }
+          </Grid>
         </Grid>
         :
         <Grid container>
