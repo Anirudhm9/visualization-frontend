@@ -11,6 +11,7 @@ import { Rcm } from './dependants/Rcm/Rcm';
 import { Maps } from './dependants/Map/Map';
 import { MapGl } from './dependants/Map/MapGl';
 import { MappingTool } from './dependants/MappingTool/MappingTool';
+import { PieChart } from './dependants/PieChart/PieChart';
 export {
   Example,
   Login,
@@ -21,5 +22,6 @@ export {
   Rcm,
   Maps,
   MapGl,
-  MappingTool
+  MappingTool,
+  PieChart
 };
