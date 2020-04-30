@@ -9,6 +9,8 @@ import { MobileMenu } from './dependants/mobileMenu/mobileMenu';
 import { Example } from './dependants/Example/Example';
 import { Rcm } from './dependants/Rcm/Rcm';
 import { Maps } from './dependants/Map/Map';
+import { MapGl } from './dependants/Map/MapGl';
+import { MappingTool } from './dependants/MappingTool/MappingTool';
 export {
   Example,
   Login,
@@ -17,5 +19,7 @@ export {
   MobileMenu,
   FourOFour,
   Rcm,
-  Maps
+  Maps,
+  MapGl,
+  MappingTool
 };

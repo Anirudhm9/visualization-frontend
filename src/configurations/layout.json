@@ -39,6 +39,24 @@
       "subMenuItems": []
     },
     {
+      "name": "MapGl",
+      "type": "button",
+      "icon": "map",
+      "controller": "/mapGl",
+      "customTitle": "Maps",
+      "isFavourite": true,
+      "subMenuItems": []
+    },
+    {
+      "name": "Mapping Tool",
+      "type": "button",
+      "icon": "map",
+      "controller": "/mappingTool",
+      "customTitle": "Maps",
+      "isFavourite": true,
+      "subMenuItems": []
+    },
+    {
       "name": "Logout",
       "type": "logout",
       "icon": "logout",

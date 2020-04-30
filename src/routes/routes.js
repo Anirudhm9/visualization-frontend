@@ -4,7 +4,7 @@
 import React, { useContext } from 'react';
 import { Switch, Route, Redirect } from 'react-router-dom';
 import { LoginContext } from 'contexts';
-import { Login, Home, MobileMenu, FourOFour, Example, Rcm, Maps } from 'views';
+import { Login, Home, MobileMenu, FourOFour, Example, Rcm, Maps, MapGl, MappingTool } from 'views';
 import { Layout } from '../layout';
 import { LayoutConfig } from 'configurations';
 import { LoadingScreen } from 'components';
@@ -27,6 +27,8 @@ export const AppRoutes = (props) => {
       <Route exact path='/examples' render={() => ((loginStatus === false ? <Redirect to={{ pathname: '/login' }}  {...props} /> : <Layout> <Example  {...props} /></Layout>))} />
       <Route exact path='/rcm' render={() => ((loginStatus === false ? <Redirect to={{ pathname: '/login' }}  {...props} /> : <Layout> <Rcm  {...props} /></Layout>))} />
       <Route exact path='/maps' render={() => ((loginStatus === false ? <Redirect to={{ pathname: '/login' }}  {...props} /> : <Layout> <Maps  {...props} /></Layout>))} />
+      <Route exact path='/mapGl' render={() => ((loginStatus === false ? <Redirect to={{ pathname: '/login' }}  {...props} /> : <Layout> <MapGl  {...props} /></Layout>))} />
+      <Route exact path='/mappingtool' render={() => ((loginStatus === false ? <Redirect to={{ pathname: '/login' }}  {...props} /> : <Layout> <MappingTool  {...props} /></Layout>))} />
       <Route render={() => ((loginStatus === false ? <Redirect to={{ pathname: '/login' }}  {...props} /> : <Layout><FourOFour  {...props} /></Layout>))} />
     </Switch >
   );
