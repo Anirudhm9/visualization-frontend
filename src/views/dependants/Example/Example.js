@@ -6,7 +6,7 @@ export const Example = () => {
   let content = (
     <div>
       <div>
-        <Iframe url="http://127.0.0.1:5500/demos/interpreter/async-execution.html"
+        <Iframe url="https://anirudhm9.github.io/blockly/demos/interpreter/async-execution.html"
           width="100%"
           height="680"
           id="myId"
@@ -15,7 +15,7 @@ export const Example = () => {
           position="relative" />
       </div>
       <div style={{position:'absolute', right: 15}}>
-        <IconButton target='_blank' href='http://127.0.0.1:5500/demos/interpreter/async-execution.html'><LanguageIcon /></IconButton>
+        <IconButton target='_blank' href='https://anirudhm9.github.io/blockly/demos/interpreter/async-execution.html'><LanguageIcon /></IconButton>
       </div>
     </div>
   );
