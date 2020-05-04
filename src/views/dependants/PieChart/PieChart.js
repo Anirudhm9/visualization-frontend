@@ -112,6 +112,7 @@ export const PieChart = (props) => {
   useEffect(() => {
     if (opValue !== undefined && opValue !== null && opValue !== '') {
       props.setFilter(opValue);
+      setOpValue();
     }
   }, [opValue, props]);
 
@@ -121,23 +122,15 @@ export const PieChart = (props) => {
 
   useEffect(() => {
     if (props.data !== null && props.data !== undefined) {
-        setTitle(props.title);
-        setEdata(props.data);
+      setTitle(props.title);
+      setEdata(props.data);
     }
   }, [props]);
 
   let content = (
-    <>{edata !== undefined && edata !== null ? <Container maxWidth="sm" style={{ marginTop: '1vh' }}>
-      <Grid container direction="row" alignItems="center" spacing={2}>
-        <Grid item>
-          <Button variant="contained" color="primary"
-            onClick={() => {
-              props.reset();
-            }} >Reset</Button>
-        </Grid>
-      </Grid>
+    <>{edata !== undefined && edata !== null ?
       <PieECharts title={title ? title : null} data={edata} config={econfig} setOpValue={setOpValue} />
-    </Container> : <Typography>No Data present!</Typography>}</>
+      : <Typography>No Data present!</Typography>}</>
   );
 
   return content;
