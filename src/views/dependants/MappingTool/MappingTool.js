@@ -1,6 +1,6 @@
 /* eslint-disable no-empty */
 import React, { useEffect, useContext, useState } from 'react';
-import { Grid, Typography, Paper, withStyles, Chip, FormControlLabel, makeStyles, Checkbox, Slide, Toolbar, useTheme, IconButton, CircularProgress, TextField, MenuItem, Tabs, Tab, Button, useMediaQuery, Tooltip } from '@material-ui/core';
+import { Grid, Container, Typography, Divider, Paper, withStyles, Chip, FormControlLabel, makeStyles, Checkbox, Slide, Toolbar, useTheme, IconButton, CircularProgress, TextField, MenuItem, Tabs, Tab, Button, useMediaQuery, Tooltip } from '@material-ui/core';
 import { HeaderElements, EnhancedTable } from 'components';
 import { LayoutContext } from 'contexts';
 import { API } from 'helpers';
@@ -30,7 +30,7 @@ import AntPath from 'react-leaflet-ant-path';
 import 'react-leaflet-markercluster/dist/styles.min.css';
 // import { HeatmapLayer } from 'react-leaflet-heatmap-layer';
 import HeatmapLayer from './assets/HeatmapLayer';
-import { PieChart } from '../PieChart/PieChart';
+import { PieChart, BarChart } from 'views';
 // import randomColor from 'randomcolor';
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -257,7 +257,9 @@ export const MappingTool = (props) => {
       }
       console.log(tempData);
       setTrajectories(tempData);
-      if (tempData !== undefined && tempData !== null && tempData.length <= 10) {
+      if (tempData !== undefined && tempData !== null 
+        // && tempData.length <= 10
+        ) {
         let tempPie = [];
         tempData.map((item) => {
           tempPie.push({
@@ -367,11 +369,11 @@ export const MappingTool = (props) => {
     }
   };
 
-  const handleTrajectoryForPie = (selectedEntity, entityValue, color) => {
-    if (data && selectedEntity !== '' && entityValue !== '') {
+  const handleTrajectoryForPie = (selectedEntity1, entityValue1, color) => {
+    if (data && selectedEntity1 !== '' && entityValue1 !== '') {
       let consists = false;
       trajectoryData.map(element => {
-        if (element.value === entityValue && element.entity === selectedEntity) {
+        if (element.value === entityValue1 && element.entity === selectedEntity1) {
           consists = true;
         }
         else {
@@ -383,15 +385,13 @@ export const MappingTool = (props) => {
         let tempData = { latLongs: [], color: '' };
         let tempTrajectory = {};
         tempTrajectory.color = color;
-        tempTrajectory.entity = selectedEntity;
-        tempTrajectory.value = entityValue;
+        tempTrajectory.entity = selectedEntity1;
+        tempTrajectory.value = entityValue1;
         tempData.color = color;
         setTrajectoryData([...trajectoryData, tempTrajectory]);
-        setEntityValue('');
-        setSelectedEntity('');
       }
       else {
-        notify('Config already exists');
+        notify('Config already exists1');
       }
     }
     else {
@@ -931,16 +931,32 @@ export const MappingTool = (props) => {
             </Grid>
           }
           <Grid item xs={4}>
-            {uniqueEntity === undefined || uniqueEntity === null || uniqueEntity === '' ? <Typography>No entity selected</Typography> : 
-              trajectories.length > 10 ? <Typography>Too much data for pie chart!</Typography> : 
-              <PieChart title={uniqueEntity} data={pieData}
-                setFilter={(filterObj) => {
-                  handleTrajectoryForPie(uniqueEntity, filterObj.name, filterObj.color);
-                }}
-                reset={() => {
-                  setTrajectoryData([]);
-                }}
-              />
+            {uniqueEntity === undefined || uniqueEntity === null || uniqueEntity === '' ? <Typography>No unique entity selected</Typography> :
+                <Container maxWidth="sm" style={{ marginTop: '1vh' }}>
+                  <Grid container direction="row" alignItems="center" spacing={2}>
+                    <Grid item>
+                      <Button variant="contained" color="primary"
+                        onClick={() => {
+                          setTrajectoryData([]);
+                        }} >Reset</Button>
+                    </Grid>
+                  </Grid>
+                  <Typography>Pie Chart:</Typography>
+                  {trajectories.length > 10 ? <Typography>Too much data for pie chart!</Typography> :
+                    <PieChart title={uniqueEntity} data={pieData}
+                    setFilter={(filterObj) => {
+                      console.log(filterObj);
+                      handleTrajectoryForPie(uniqueEntity, filterObj.name, filterObj.color);
+                    }}
+                  />}
+                  <Divider style={{ marginTop: '1vh', marginBottom: '1vh' }} />
+                  <Typography>Bar Chart:</Typography>
+                  <BarChart title={uniqueEntity} data={pieData} xType="category" yType="value"
+                    setFilter={(filterObj) => {
+                      handleTrajectoryForPie(uniqueEntity, filterObj.name, filterObj.color);
+                    }}
+                  />
+                </Container>
             }
           </Grid>
         </Grid>
