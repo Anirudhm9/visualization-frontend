@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, Grid, Button } from '@material-ui/core';
+import { Typography } from '@material-ui/core';
 import ReactEcharts from 'echarts-for-react';
 import { LoadingScreen } from 'components/index';
 

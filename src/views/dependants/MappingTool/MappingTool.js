@@ -1,11 +1,12 @@
 /* eslint-disable no-empty */
 import React, { useEffect, useContext, useState } from 'react';
 import { Grid, Container, Typography, Divider, Paper, withStyles, Chip, FormControlLabel, makeStyles, Checkbox, Slide, Toolbar, useTheme, IconButton, CircularProgress, TextField, MenuItem, Tabs, Tab, Button, useMediaQuery, Tooltip } from '@material-ui/core';
-import { HeaderElements, EnhancedTable } from 'components';
+import { HeaderElements, EnhancedTable, LoadingScreen } from 'components';
 import { LayoutContext } from 'contexts';
 import { API } from 'helpers';
 import { Redirect } from 'react-router-dom';
 import { SketchPicker } from 'react-color';
+import Dropzone from 'react-dropzone';
 // import moment from 'moment-timezone';
 import { Map, TileLayer, Marker, Popup, Circle, FeatureGroup } from 'react-leaflet';
 import clsx from 'clsx';
@@ -23,6 +24,8 @@ import PieChartIcon from '@material-ui/icons/PieChart';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import ReplayIcon from '@material-ui/icons/Replay';
 import TimerIcon from '@material-ui/icons/Timer';
+import BuildIcon from '@material-ui/icons/Build';
+import CloudUploadIcon from '@material-ui/icons/CloudUpload';
 import { CSVLink } from 'react-csv';
 import { notify } from 'components/index';
 import MarkerClusterGroup from 'react-leaflet-markercluster';
@@ -144,6 +147,7 @@ export const MappingTool = (props) => {
   const [entityValue, setEntityValue] = useState('');
   const [color, setColor] = useState('red');
   const [uniqueEntity, setUniqueEntity] = useState('');
+  const [file, setFile] = useState();
   const [trajectoryOptions, setTrajectoryOptions] = React.useState({
     reverse: false,
     paused: false,
@@ -159,10 +163,39 @@ export const MappingTool = (props) => {
     { label: 'Phone', key: 'phoneNumber' },
   ];
   let propsValue = (props && props.location && props.location.state) && props.location.state.value;
-
-  useEffect(() => {
-    API.getDataFromFile(setData);
-  }, []);
+  const [initialLocation, setInitialLocation] = useState([]);
+  const [initialLat, setInitialLat] = useState('');
+  const [initialLong, setInitialLong] = useState('');
+  const [initialDate, setInitialDate] = useState('');
+  const [initialEntity, setInitialEntity] = useState('');
+  const [initialEntities, setInitialEntities] = useState([]);
+  const [csvUrl, setCsvUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const getDataFromFile = () => {
+    if (csvUrl !== '') {
+      let temp = {
+        csvLink: csvUrl,
+        allKeys: [],
+        config: {
+          location: initialLocation,
+          type: 'point',
+          date: initialDate,
+          entities: initialEntities,
+          order: [
+            'location',
+            'entity',
+            'time'
+          ]
+        }
+      };
+      initialDate !== '' && temp.allKeys.push(initialDate);
+      initialLocation.length > 0 && initialLocation.map(loc => { temp.allKeys.push(loc.lat); temp.allKeys.push(loc.long); return temp; });
+      initialEntities.length > 0 && initialEntities.map(entity => { temp.allKeys.push(entity); return temp; });
+      console.log(temp);
+      API.getDataFromFile(temp, setData);
+      setValue(1);
+    }
+  };
 
   useEffect(() => {
     if (data) {
@@ -257,9 +290,9 @@ export const MappingTool = (props) => {
       }
       console.log(tempData);
       setTrajectories(tempData);
-      if (tempData !== undefined && tempData !== null 
-        // && tempData.length <= 10
-        ) {
+      if (tempData !== undefined && tempData !== null
+      // && tempData.length <= 10
+      ) {
         let tempPie = [];
         tempData.map((item) => {
           tempPie.push({
@@ -290,6 +323,13 @@ export const MappingTool = (props) => {
     }
   }, [propsValue]);
 
+  const addFile = (doc) => {
+    setLoading(true);
+    let formData = new FormData();
+    formData.append('documentFile', doc[0]);
+    API.uploadDocument(formData, (data) => { setLoading(false); setCsvUrl(data); setFile(doc); });
+
+  };
   const addLocation = () => {
     if (valueLocation !== '' && latitude !== '' && longitude !== '') {
       let temp = {};
@@ -421,6 +461,15 @@ export const MappingTool = (props) => {
 
   const handleDeleteTrajectoryData = chipToDelete => () => {
     setTrajectoryData(chips => chips.filter(chip => (chip.value !== chipToDelete.value || chip.entity !== chipToDelete.entity)));
+  };
+
+  const handleConfigData = (type, chipToDelete) => () => {
+    if (type === 'Location') {
+      setInitialLocation(chips => chips.filter(chip => (chip.lat !== chipToDelete.lat || chip.long !== chipToDelete.long)));
+    }
+    else {
+      setInitialEntities(chips => chips.filter(chip => (chip !== chipToDelete)));
+    }
   };
 
   const addDays = (date, days) => {
@@ -796,34 +845,87 @@ export const MappingTool = (props) => {
     );
   };
 
+  const initializeData = (type) => {
+    if (type === 'Location') {
+      if (initialLat !== '' && initialLong !== '') {
+        let consists = false;
+        initialLocation.map(element => {
+          if (element.lat === initialLat || element.long === initialLong) {
+            consists = true;
+          }
+          else {
+            // Do nothing
+          }
+          return consists;
+        });
+        if (!consists) {
+          setInitialLocation([...initialLocation, { lat: initialLat, long: initialLong }]);
+          setInitialLat('');
+          setInitialLong('');
+        }
+        else {
+          notify('Duplicacy not allowed');
+        }
+
+      }
+      else {
+        notify('Required fields cannot be empty!');
+      }
+    }
+    else {
+      if (initialEntity !== '') {
+        let consists = false;
+        initialEntities.map(element => {
+          if (element === initialEntity) {
+            consists = true;
+          }
+          else {
+            // Do nothing
+          }
+          return consists;
+        });
+        if (!consists) {
+          setInitialEntities([...initialEntities, initialEntity]);
+          setInitialEntity('');
+        }
+        else {
+          notify('Duplicacy not allowed');
+        }
+      }
+      else {
+        notify('Required fields cannot be empty!');
+      }
+    }
+  };
+
   const returnVisualization = (viz) => {
     if (data) {
       switch (viz) {
-        case 'Clusters': return (
-          <MarkerClusterGroup >
-            {data && data.data.map((item, index) => {
-              return (
-                <Marker key={index} position={[item[(data.config.location[0].lat)], item[(data.config.location[0].long)]]} >
-                  {/* icon={image[(item.user.covidStatus)] === '' ? createIcon(item.user.covidStatus) : createIconViaLink(image[(item.user.covidStatus)])}> */}
-                  <Popup>
-                    {data.config.entities.map((entity) => (
-                      <Typography key={Math.random()}>{`${entity} : ${item[entity]}`}</Typography>
-                    ))}
-                  </Popup>
-                </Marker>
-              );
-            })}
-          </MarkerClusterGroup>);
-        case 'Heatmap': return (
-          <HeatmapLayer
-            fitBoundsOnLoad
-            fitBoundsOnUpdate
-            points={data.data}
-            longitudeExtractor={m => m[(data.config.location[0].long)]}
-            latitudeExtractor={m => m[(data.config.location[0].lat)]}
-            intensityExtractor={m => parseFloat(m[elevation] ? m[elevation] : m[data.config.entities[0]])} />
-        );
-        case 'Trajectory': return (
+      case 'Clusters': return (
+        <MarkerClusterGroup >
+          {data && data.data.map((item, index) => {
+            return (
+              <Marker key={index} position={[item[(data.config.location[0].lat)], item[(data.config.location[0].long)]]} >
+                {/* icon={image[(item.user.covidStatus)] === '' ? createIcon(item.user.covidStatus) : createIconViaLink(image[(item.user.covidStatus)])}> */}
+                <Popup>
+                  {data.config.entities.map((entity) => (
+                    <Typography key={Math.random()}>{`${entity} : ${item[entity]}`}</Typography>
+                  ))}
+                </Popup>
+              </Marker>
+            );
+          })}
+        </MarkerClusterGroup>);
+      case 'Heatmap': return (
+        <HeatmapLayer
+          fitBoundsOnLoad
+          fitBoundsOnUpdate
+          points={data.data}
+          longitudeExtractor={m => m[(data.config.location[0].long)]}
+          latitudeExtractor={m => m[(data.config.location[0].lat)]}
+          intensityExtractor={m => parseFloat(m[elevation] ? m[elevation] : m[data.config.entities[0]])} />
+      );
+      case 'Trajectory': return (
           <>
             {trajectories.map((item, i) => (
               <AntPath key={i} positions={item.latLongs} options={{ color: item.color && item.color !== '' ? item.color : 'red', reverse: trajectoryOptions.reverse, paused: trajectoryOptions.paused, delay: 800 }} >
@@ -835,8 +937,8 @@ export const MappingTool = (props) => {
               </AntPath>
             ))}
           </>
-        );
-        default: return null;
+      );
+      default: return null;
       }
     }
   };
@@ -856,82 +958,189 @@ export const MappingTool = (props) => {
           textColor="primary"
           aria-label="scrollable force tabs example"
         >
-          <Tab label="Map" icon={<MapIcon />} {...a11yProps(0)} />
-          <Tab label="Analysis" icon={<PieChartIcon />} {...a11yProps(1)} />
+          <Tab label="Map" icon={<BuildIcon />} {...a11yProps(0)} />
+          <Tab label="Map" icon={<MapIcon />} {...a11yProps(1)} />
+          <Tab label="Analysis" icon={<PieChartIcon />} {...a11yProps(2)} />
         </Tabs>
       </Grid>
       {value === 0 ?
-        <Grid container>
-          <Grid item style={{ zIndex: 99, position: 'absolute', marginTop: 90, marginLeft: 5 }}>
-            {open ? MakeshiftDrawer(open) :
-              <Toolbar>
-                <IconButton
-                  color={layers[0] !== layer ? 'secondary' : 'primary'}
-                  aria-label="open drawer"
-                  onClick={() => setOpen(true)}
-                  edge="start"
-                  className={clsx(classes.menuButton, open && classes.hide)}
-                  style={{ backgroundColor: value === 0 ? layers[0] === layer ? 'white' : 'grey' : 'grey' }}
-                >
-                  <MenuIcon />
-                </IconButton>
-              </Toolbar>
-            }
-            <Toolbar style={{ marginTop: 10 }}>
-              <IconButton
-                color={layers[0] !== layer ? 'secondary' : 'primary'}
-                aria-label="Layers"
-                onClick={() => layers[0] === layer ? setLayer(layers[1]) : setLayer(layers[0])}
-                edge="start"
-                style={{ backgroundColor: layers[0] === layer ? 'white' : 'grey' }}
-              >
-                <LayersIcon />
-              </IconButton>
-            </Toolbar>
+        <Grid container spacing={2} sytle={{ marginTop: 10, marginLeft: 20 }}>
+          <Grid item xs={12}>
+            <Typography variant='h4'>Build your configuration</Typography>
           </Grid>
-          {isItDesktop ?
-            <Grid item xs={7} style={{ zIndex: 2 }}>
-              <Paper className={classes.desktopMap}>
-                <Map center={mapCentre} zoom={mapZoom} style={{ height: '82vh', width: '100%' }}>
-                  <TileLayer
-                    url={layer}
-                    attribution={layer === layers[0] ? attribution[0] : attribution[1]}
-                  />
-
-                  {chipData.length !== 0 && chipData.map((item, i) => (
-                    <FeatureGroup key={i}>
-                      <Popup>{item.suburb}</Popup>
-                      <Circle center={[item.lat, item.long]} color={item.color} fillColor={item.color} radius={2000} />
-                    </FeatureGroup>
-                  ))
-                  }
-                  {returnVisualization(selectedVisualization)}
-                </Map>
-              </Paper>
+          {loading ? <LoadingScreen /> : !file ?
+            <Grid container item direction='column' alignItems='center' justify='center'>
+              <Dropzone accept=".csv" onDrop={addFile}>
+                {({ getRootProps, getInputProps }) => (
+                  <section>
+                    <div {...getRootProps()} style={{ border: '1px dashed black', color: 'black', padding: 20, cursor: 'pointer', display: 'inline-block' }}>
+                      <input {...getInputProps()} />
+                      <p style={{ textAlign: 'center' }}>{<CloudUploadIcon />}</p>
+                      <p>Drag 'n' drop some files here, or click to select files</p>
+                    </div>
+                  </section>
+                )}
+              </Dropzone>
             </Grid>
             :
-            <Grid item xs={7} style={{ zIndex: 2 }}>
-              <Paper className={classes.map}>
-                <Map center={mapCentre} zoom={mapZoom} style={{ height: '72vh', width: '100%' }}>
-                  <TileLayer
-                    url={layer}
-                    attribution={layer === layers[0] ? attribution[0] : attribution[1]}
-                  />
-
-                  {chipData.length !== 0 && chipData.map((item, i) => (
-                    <FeatureGroup key={i}>
-                      <Popup>{item.suburb}</Popup>
-                      <Circle center={[item.lat, item.long]} color={item.color} fillColor={item.color} radius={2000} />
-                    </FeatureGroup>
-                  ))
+            <Grid container item xs={12}>
+              <Grid container item xs={8} spacing={2}>
+                <Grid item xs={4}>
+                  <Typography>Latitude</Typography>
+                </Grid>
+                <Grid item xs={8}>
+                  <TextField variant='outlined' value={initialLat} onChange={(e) => setInitialLat(e.target.value)} />
+                </Grid>
+                <Grid item xs={4}>
+                  <Typography>Longitude</Typography>
+                </Grid>
+                <Grid item xs={8}>
+                  <TextField variant='outlined' value={initialLong} onChange={(e) => setInitialLong(e.target.value)} />
+                </Grid>
+                <Grid item xs={12}>
+                  <IconButton onClick={() => initializeData('Location')}><AddIcon /></IconButton>
+                </Grid>
+                <Grid item xs={4}>
+                  <Typography>Date</Typography>
+                </Grid>
+                <Grid item xs={8}>
+                  <TextField variant='outlined' value={initialDate} onChange={(e) => setInitialDate(e.target.value)} />
+                </Grid>
+                <Grid item xs={4}>
+                  <Typography>Entities</Typography>
+                </Grid>
+                <Grid item xs={8}>
+                  <TextField variant='outlined' value={initialEntity} onChange={(e) => setInitialEntity(e.target.value)} />
+                </Grid>
+                <Grid container item alignItems='flex-end' xs={12}>
+                  <IconButton onClick={() => initializeData('Entity')}><AddIcon /></IconButton>
+                </Grid>
+              </Grid>
+              <Grid container item xs={4} spacing={2}>
+                <Grid container item spacing={1}>
+                  <Typography>Location: </Typography>
+                  {initialLocation.length !== 0 ? initialLocation.map((data, i) => {
+                    return (
+                      <Grid item key={i} >
+                        <Chip
+                          key={i}
+                          label={'lat: ' + data.lat + ' | long: ' + data.long}
+                          onDelete={handleConfigData('Location', data)}
+                          className={classes.chip}
+                        />
+                      </Grid>
+                    );
+                  })
+                    :
+                    <Typography>Empty</Typography>
                   }
-                  {returnVisualization(selectedVisualization)}
-                </Map>
-              </Paper>
+                </Grid>
+                <Grid item>
+                  <Typography>Date: {initialDate !== '' ? initialDate : 'None'}</Typography>
+                </Grid>
+                <Grid container item spacing={1}>
+                  <Typography>Entities: </Typography>
+                  {initialEntities.length !== 0 ? initialEntities.map((data, i) => {
+                    return (
+                      <Grid item key={i} >
+                        <Chip
+                          key={i}
+                          label={data}
+                          onDelete={handleConfigData('Entity', data)}
+                          className={classes.chip}
+                        />
+                      </Grid>
+                    );
+                  })
+                    :
+                    <Typography>Empty</Typography>
+                  }
+                </Grid>
+                <Grid item>
+                  <Button color='secondary' variant='outlined' onClick={() => { setFile(); setData(); }}>Reset Data</Button>
+                </Grid>
+
+                <Grid item>
+                  <Button color='primary' variant='outlined' onClick={() => { getDataFromFile(); }}>Submit</Button>
+                </Grid>
+              </Grid>
             </Grid>
+
           }
-          <Grid item xs={4}>
-            {uniqueEntity === undefined || uniqueEntity === null || uniqueEntity === '' ? <Typography>No unique entity selected</Typography> :
+        </Grid>
+        :
+        value === 1 ?
+          <Grid container>
+            <Grid item style={{ zIndex: 99, position: 'absolute', marginTop: 90, marginLeft: 5 }}>
+              {open ? MakeshiftDrawer(open) :
+                <Toolbar>
+                  <IconButton
+                    color={layers[0] !== layer ? 'secondary' : 'primary'}
+                    aria-label="open drawer"
+                    onClick={() => setOpen(true)}
+                    edge="start"
+                    className={clsx(classes.menuButton, open && classes.hide)}
+                    style={{ backgroundColor: value === 0 ? layers[0] === layer ? 'white' : 'grey' : 'grey' }}
+                  >
+                    <MenuIcon />
+                  </IconButton>
+                </Toolbar>
+              }
+              <Toolbar style={{ marginTop: 10 }}>
+                <IconButton
+                  color={layers[0] !== layer ? 'secondary' : 'primary'}
+                  aria-label="Layers"
+                  onClick={() => layers[0] === layer ? setLayer(layers[1]) : setLayer(layers[0])}
+                  edge="start"
+                  style={{ backgroundColor: layers[0] === layer ? 'white' : 'grey' }}
+                >
+                  <LayersIcon />
+                </IconButton>
+              </Toolbar>
+            </Grid>
+            {isItDesktop ?
+              <Grid item xs={7} style={{ zIndex: 2 }}>
+                <Paper className={classes.desktopMap}>
+                  <Map center={mapCentre} zoom={mapZoom} style={{ height: '82vh', width: '100%' }}>
+                    <TileLayer
+                      url={layer}
+                      attribution={layer === layers[0] ? attribution[0] : attribution[1]}
+                    />
+
+                    {chipData.length !== 0 && chipData.map((item, i) => (
+                      <FeatureGroup key={i}>
+                        <Popup>{item.suburb}</Popup>
+                        <Circle center={[item.lat, item.long]} color={item.color} fillColor={item.color} radius={2000} />
+                      </FeatureGroup>
+                    ))
+                    }
+                    {returnVisualization(selectedVisualization)}
+                  </Map>
+                </Paper>
+              </Grid>
+              :
+              <Grid item xs={7} style={{ zIndex: 2 }}>
+                <Paper className={classes.map}>
+                  <Map center={mapCentre} zoom={mapZoom} style={{ height: '72vh', width: '100%' }}>
+                    <TileLayer
+                      url={layer}
+                      attribution={layer === layers[0] ? attribution[0] : attribution[1]}
+                    />
+
+                    {chipData.length !== 0 && chipData.map((item, i) => (
+                      <FeatureGroup key={i}>
+                        <Popup>{item.suburb}</Popup>
+                        <Circle center={[item.lat, item.long]} color={item.color} fillColor={item.color} radius={2000} />
+                      </FeatureGroup>
+                    ))
+                    }
+                    {returnVisualization(selectedVisualization)}
+                  </Map>
+                </Paper>
+              </Grid>
+            }
+            <Grid item xs={4}>
+              {uniqueEntity === undefined || uniqueEntity === null || uniqueEntity === '' ? <Typography>No unique entity selected</Typography> :
                 <Container maxWidth="sm" style={{ marginTop: '1vh' }}>
                   <Grid container direction="row" alignItems="center" spacing={2}>
                     <Grid item>
@@ -944,11 +1153,11 @@ export const MappingTool = (props) => {
                   <Typography>Pie Chart:</Typography>
                   {trajectories.length > 10 ? <Typography>Too much data for pie chart!</Typography> :
                     <PieChart title={uniqueEntity} data={pieData}
-                    setFilter={(filterObj) => {
-                      console.log(filterObj);
-                      handleTrajectoryForPie(uniqueEntity, filterObj.name, filterObj.color);
-                    }}
-                  />}
+                      setFilter={(filterObj) => {
+                        console.log(filterObj);
+                        handleTrajectoryForPie(uniqueEntity, filterObj.name, filterObj.color);
+                      }}
+                    />}
                   <Divider style={{ marginTop: '1vh', marginBottom: '1vh' }} />
                   <Typography>Bar Chart:</Typography>
                   <BarChart title={uniqueEntity} data={pieData} xType="category" yType="value"
@@ -957,29 +1166,29 @@ export const MappingTool = (props) => {
                     }}
                   />
                 </Container>
-            }
+              }
+            </Grid>
           </Grid>
-        </Grid>
-        :
-        <Grid container>
-          <EnhancedTable title='Patients' data={[]} options={{
-            disablePagination: true,
-            maxHeight: '70vh',
-            selector: false,
-            search: true,
-            ignoreKeys: ['_id', 'countryCode'],
-            actionLocation: 'end',
-            actions: [{
-              name: 'Action',
-              function: (e, data) => handleClick(data),
-              type: 'button',
-              label: 'details'
-            }]
-          }} />
-          <Grid item>
-            <CSVLink data={[]} headers={headers} separator={','} filename={'User-List.csv'} onClick={() => { notify('Generating File..'); }} ><Button variant='outlined' color='primary'>Download CSV</Button></CSVLink>
+          :
+          <Grid container>
+            <EnhancedTable title='Patients' data={[]} options={{
+              disablePagination: true,
+              maxHeight: '70vh',
+              selector: false,
+              search: true,
+              ignoreKeys: ['_id', 'countryCode'],
+              actionLocation: 'end',
+              actions: [{
+                name: 'Action',
+                function: (e, data) => handleClick(data),
+                type: 'button',
+                label: 'details'
+              }]
+            }} />
+            <Grid item>
+              <CSVLink data={[]} headers={headers} separator={','} filename={'User-List.csv'} onClick={() => { notify('Generating File..'); }} ><Button variant='outlined' color='primary'>Download CSV</Button></CSVLink>
+            </Grid>
           </Grid>
-        </Grid>
       }
     </Grid >
   );

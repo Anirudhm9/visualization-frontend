@@ -106,6 +106,19 @@ class API {
     })
   }
 
+  uploadDocument = (data, callback) => {
+    axiosInstance.post('/upload/uploadDocument', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
+    }).then(response => {
+      notify("Document Uploaded");
+      return callback(response.data.data.documentFileUrl.original)
+    }).catch(error => {
+      errorHelper(error)
+    })
+  }
+
   updateBlock = (data, callback) => {
     axiosInstance.put('/rcm/updateBlock', data, {
     }).then(response => {
@@ -126,8 +139,8 @@ class API {
     })
   }
 
-  getDataFromFile = (callback) => {
-    axiosInstance.get('/visualization/getDataFromFile', {
+  getDataFromFile = (data, callback) => {
+    axiosInstance.post('/visualization/getDataFromFile', data, {
     }).then(response => {
       return callback(response.data.data.data)
     }).catch(error => {
