@@ -12,6 +12,7 @@ import { Maps } from './dependants/Map/Map';
 import { MapGl } from './dependants/Map/MapGl';
 import { MappingTool } from './dependants/MappingTool/MappingTool';
 import { PieChart } from './dependants/PieChart/PieChart';
+import { BarChart } from './dependants/BarChart/BarChart';
 export {
   Example,
   Login,
@@ -23,5 +24,6 @@ export {
   Maps,
   MapGl,
   MappingTool,
-  PieChart
+  PieChart,
+  BarChart
 };
