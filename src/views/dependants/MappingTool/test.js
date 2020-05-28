@@ -5,7 +5,7 @@ import { HeaderElements, LoadingScreen } from 'components';
 import { LayoutContext } from 'contexts';
 import { API } from 'helpers';
 // import { Redirect } from 'react-router-dom';
-// import { SketchPicker } from 'react-color';
+import { SketchPicker } from 'react-color';
 import Dropzone from 'react-dropzone';
 // import moment from 'moment-timezone';
 import { Map, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -170,7 +170,7 @@ export const MappingTool = (props) => {
   // const [trajectories, setTrajectories] = useState([]);
   const [selectedEntity, setSelectedEntity] = useState('');
   const [entityValue, setEntityValue] = useState('');
-  // const [color, setColor] = useState('red');
+  const [color, setColor] = useState('red');
   const [uniqueEntity, setUniqueEntity] = useState('');
   const [file, setFile] = useState();
   const [trajectoryOptions, setTrajectoryOptions] = React.useState({
@@ -194,9 +194,6 @@ export const MappingTool = (props) => {
   const [trajectoriesData, setTrajectoriesData] = useState([]);
   const [chartData, setChartData] = useState([]);
   const [dialogOpen, setDialogOpen] = useState({ state: false, type: '', data: {} });
-  const [dateKey, setDateKey] = useState('');
-  const [dataName, setDataName] = useState('');
-  const [uniqueUpdate, setUniqueUpdate] = useState(false);
   // const [uniqueEntitiyVisualization, setUniqueEntityVisualization] = useState({
   //   Clusters: false,
   //   Heatmap: false,
@@ -207,7 +204,6 @@ export const MappingTool = (props) => {
     if (csvUrl !== '') {
       let temp = {
         csvLink: csvUrl,
-        workspace: dataName,
         allKeys: [],
         config: {
           location: initialLocation,
@@ -224,115 +220,398 @@ export const MappingTool = (props) => {
       initialDate !== '' && temp.allKeys.push(initialDate);
       initialLocation.length > 0 && initialLocation.map(loc => { temp.allKeys.push(loc.lat); temp.allKeys.push(loc.long); return temp; });
       initialEntities.length > 0 && initialEntities.map(entity => { temp.allKeys.push(entity); return temp; });
-
-      API.getDataFromFile(temp, (response) => {
-        setData(response.data);
-        initialDate && initialDate !== '' && setDateKey(response.data.config.date);
-        response.startDate && !timelineStatus && setSelectedDateStart(new Date(response.startDate));
-        setEntities(response.data.config.entities);
-        let tempElevation = [];
-        response.data.config && response.data.config.entities.length > 0 && response.data.data.length > 0 && response.data.config.entities.map(element => {
-          if (!isNaN(parseFloat(response.data.data[0][element]))) {
-            tempElevation.push(element);
-          }
-          return tempElevation;
-        });
-        setElevations(tempElevation);
-        if (response.data.visualizations) {
-          let tempVisualizations = [];
-          let keys = Object.keys(response.data.visualizations);
-          keys.map(item => {
-            if (response.data.visualizations[item]) {
-              if (item === 'Heatmap') {
-                if (tempElevation.length) {
-                  tempVisualizations.push(item);
-                }
-              }
-              else {
-                tempVisualizations.push(item);
-              }
-            }
-            return tempVisualizations;
-          });
-          setVisualizations(tempVisualizations);
-        }
-      });
+      if (timelineStatus) {
+        temp.startDate = selectedDateStart;
+        temp.endDate = selectedDateEnd;
+      }
+      else {
+        delete temp.startDate;
+        delete temp.endDate;
+      }
+      console.log(temp, '<<<<<<<', timelineStatus);
+      API.getDataFromFile(temp, (response) => { setData(response.data); response.startDate && !timelineStatus && setSelectedDateStart(new Date(response.startDate)); });
       setValue(1);
-      setClusterData([]);
-      setHeatMapData([]);
-      setTrajectoriesData([]);
-      setChartData([]);
-      setPieData([]);
-      setHeatMapPoints([]);
-      setUniqueUpdate(false);
-      setSelectedVisualization({
-        Clusters: false,
-        Heatmap: false,
-        Trajectory: false,
-        '2D chart': false
-      });
     }
   };
 
   useEffect(() => {
     if (data) {
-      let payload = {
-        csvLink: csvUrl,
-        workspace: dataName,
-        uniqueEntity: uniqueEntity,
-        entities: trajectoryData,
-      };
-      if (timelineStatus) {
-        payload.date = dateKey;
-        payload.startDate = selectedDateStart;
-        payload.endDate = selectedDateEnd;
-      }
-      else {
-        delete payload.date;
-        delete payload.startDate;
-        delete payload.endDate;
-      }
-      payload.selectedVisualizations = selectedVisualization;
-      // let tempTrajectoryLatLongs = [];
-      API.getFilteredData(payload, (response) => {
-
-        if (uniqueEntity === '' && trajectoryData.length === 0) {
-          setClusterData(response.Clusters && response.Clusters[0] && response.Clusters[0].data && response.Clusters[0].data);
-          setHeatMapData(response.Heatmap && response.Heatmap[0] && response.Heatmap[0].data && response.Heatmap[0].data);
-          setTrajectoriesData(response.Trajectory && response.Trajectory[0] && response.Trajectory[0].data && response.Trajectory[0].data);
-          setChartData(response['2D chart'] && response['2D chart'][0] && response['2D chart'][0].data && response['2D chart'][0].data);
-          setUniqueUpdate(true);
+      setEntities(data.config.entities);
+      let tempElevation = [];
+      data.config && data.config.entities.length > 0 && data.data.length > 0 && data.config.entities.map(element => {
+        if (!isNaN(parseFloat(data.data[0][element]))) {
+          tempElevation.push(element);
+        }
+        return tempElevation;
+      });
+      let tempData = [];
+      let tempTrajectories = { latLongs: [] };
+      let temp1 = [];
+      let temp2 = [];
+      let temp3 = [];
+      let temp4 = [];
+      if (trajectoryData.length === 0) {
+        if (uniqueEntity && uniqueEntity !== '') {
+          data.data.forEach(datum => {
+            // tempTrajectories[uniqueEntity] = datum[uniqueEntity];
+            entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+            let pos = tempData.map(temp => { return temp[uniqueEntity]; }).indexOf(datum[uniqueEntity]);
+            if (pos !== -1) {
+              data.config.location.length > 0 && data.config.location.forEach(loc => (
+                tempData[pos].latLongs.push([datum[loc.lat], datum[loc.long]])
+              ));
+            }
+            else {
+              data.config.location.length > 0 && data.config.location.forEach(loc => {
+                tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]]);
+                tempTrajectories.color = randomColor();
+              });
+              tempData.push(tempTrajectories);
+            }
+            tempTrajectories = { latLongs: [] };
+          }
+          );
         }
         else {
-          setClusterData(response.Clusters && response.Clusters);
-          setHeatMapData(response.Heatmap && response.Heatmap);
-          setTrajectoriesData(response.Trajectory && response.Trajectory);
-          setChartData(response['2D chart'] && response['2D chart']);
-          setUniqueUpdate(true);
+          data.data.forEach(datum => {
+            // tempTrajectories[uniqueEntity] = datum[uniqueEntity];
+            entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+            data.config.location.length > 0 && data.config.location.forEach(loc => (
+              tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+            ));
+            tempData.push(tempTrajectories);
+            tempTrajectories = { latLongs: [] };
+          }
+          );
         }
-      });
-    }
+        setClusterData(tempData);
+        setHeatMapData(tempData);
+        setTrajectoriesData(tempData);
+        setChartData(tempData);
+      }
+      else {
+        if (uniqueEntity && uniqueEntity !== '') {
 
-  }, [csvUrl, uniqueEntity, trajectoryData, dateKey, selectedDateStart, selectedDateEnd, timelineStatus, data, selectedVisualization, dataName]);
+          // tempTrajectories[uniqueEntity] = datum[uniqueEntity];
 
-
-  useEffect(() => {
-    if (chartData && chartData.length > 0 && uniqueEntity !== '' && selectedVisualization['2D chart']) {
-      let tempPie = [];
-      chartData.map((item) => {
-        item && item._id && item.data &&
-          tempPie.push({
-            name: item._id,
-            value: item.data.length
+          trajectoryData.forEach(element => {
+            if (element.visualizations.Clusters) {
+              data.data.forEach(datum => {
+                entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+                let pos = temp1.map(temp => { return temp[uniqueEntity]; }).indexOf(datum[uniqueEntity]);
+                if (datum[element.entity] === element.value) {
+                  if (pos !== -1) {
+                    data.config.location.length > 0 && data.config.location.forEach(loc => (
+                      temp1[pos].latLongs.push([datum[loc.lat], datum[loc.long]])
+                    ));
+                    temp1[pos].color = element.color;
+                  }
+                  else {
+                    data.config.location.length > 0 && data.config.location.map(loc => (
+                      tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                    ));
+                    tempTrajectories.color = element.color;
+                    temp1.push(tempTrajectories);
+                  }
+                  tempTrajectories = { latLongs: [] };
+                }
+              });
+            }
+            else {
+              data.data.forEach(datum => {
+                // tempTrajectories[uniqueEntity] = datum[uniqueEntity];
+                entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+                let pos = temp1.map(temp => { return temp[uniqueEntity]; }).indexOf(datum[uniqueEntity]);
+                if (pos !== -1) {
+                  data.config.location.length > 0 && data.config.location.forEach(loc => (
+                    temp1[pos].latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                }
+                else {
+                  data.config.location.length > 0 && data.config.location.forEach(loc => (
+                    tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                  temp1.push(tempTrajectories);
+                }
+                tempTrajectories = { latLongs: [] };
+              }
+              );
+            }
+            if (element.visualizations.Heatmap) {
+              data.data.forEach(datum => {
+                entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+                let pos = temp2.map(temp => { return temp[uniqueEntity]; }).indexOf(datum[uniqueEntity]);
+                if (datum[element.entity] === element.value) {
+                  if (pos !== -1) {
+                    data.config.location.length > 0 && data.config.location.forEach(loc => (
+                      temp2[pos].latLongs.push([datum[loc.lat], datum[loc.long]])
+                    ));
+                    temp2[pos].color = element.color;
+                  }
+                  else {
+                    data.config.location.length > 0 && data.config.location.map(loc => (
+                      tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                    ));
+                    tempTrajectories.color = element.color;
+                    temp2.push(tempTrajectories);
+                  }
+                  tempTrajectories = { latLongs: [] };
+                }
+              });
+            }
+            else {
+              data.data.forEach(datum => {
+                // tempTrajectories[uniqueEntity] = datum[uniqueEntity];
+                entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+                let pos = temp2.map(temp => { return temp[uniqueEntity]; }).indexOf(datum[uniqueEntity]);
+                if (pos !== -1) {
+                  data.config.location.length > 0 && data.config.location.forEach(loc => (
+                    temp2[pos].latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                }
+                else {
+                  data.config.location.length > 0 && data.config.location.forEach(loc => (
+                    tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                  temp2.push(tempTrajectories);
+                }
+                tempTrajectories = { latLongs: [] };
+              }
+              );
+            }
+            if (element.visualizations.Trajectory) {
+              data.data.forEach(datum => {
+                entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+                let pos = temp3.map(temp => { return temp[uniqueEntity]; }).indexOf(datum[uniqueEntity]);
+                if (datum[element.entity] === element.value) {
+                  if (pos !== -1) {
+                    data.config.location.length > 0 && data.config.location.forEach(loc => (
+                      temp3[pos].latLongs.push([datum[loc.lat], datum[loc.long]])
+                    ));
+                    temp3[pos].color = randomColor();
+                  }
+                  else {
+                    data.config.location.length > 0 && data.config.location.map(loc => (
+                      tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                    ));
+                    tempTrajectories.color = randomColor();
+                    temp3.push(tempTrajectories);
+                  }
+                  tempTrajectories = { latLongs: [] };
+                }
+              });
+            }
+            else {
+              data.data.forEach(datum => {
+                // tempTrajectories[uniqueEntity] = datum[uniqueEntity];
+                entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+                let pos = temp3.map(temp => { return temp[uniqueEntity]; }).indexOf(datum[uniqueEntity]);
+                if (pos !== -1) {
+                  data.config.location.length > 0 && data.config.location.forEach(loc => (
+                    temp3[pos].latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                }
+                else {
+                  data.config.location.length > 0 && data.config.location.forEach(loc => (
+                    tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                  temp3.push(tempTrajectories);
+                }
+                tempTrajectories = { latLongs: [] };
+              }
+              );
+            }
+            if (element.visualizations['2D chart']) {
+              data.data.forEach(datum => {
+                entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+                let pos = temp4.map(temp => { return temp[uniqueEntity]; }).indexOf(datum[uniqueEntity]);
+                if (datum[element.entity] === element.value) {
+                  if (pos !== -1) {
+                    data.config.location.length > 0 && data.config.location.forEach(loc => (
+                      temp4[pos].latLongs.push([datum[loc.lat], datum[loc.long]])
+                    ));
+                    temp4[pos].color = element.color;
+                  }
+                  else {
+                    data.config.location.length > 0 && data.config.location.map(loc => (
+                      tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                    ));
+                    tempTrajectories.color = element.color;
+                    temp4.push(tempTrajectories);
+                  }
+                  tempTrajectories = { latLongs: [] };
+                }
+              });
+            }
+            else {
+              data.data.forEach(datum => {
+                // tempTrajectories[uniqueEntity] = datum[uniqueEntity];
+                entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+                let pos = temp4.map(temp => { return temp[uniqueEntity]; }).indexOf(datum[uniqueEntity]);
+                if (pos !== -1) {
+                  data.config.location.length > 0 && data.config.location.forEach(loc => (
+                    temp4[pos].latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                }
+                else {
+                  data.config.location.length > 0 && data.config.location.forEach(loc => (
+                    tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                  temp4.push(tempTrajectories);
+                }
+                tempTrajectories = { latLongs: [] };
+              }
+              );
+            }
           });
-        return item;
-      });
-      setPieData(tempPie);
+        }
+        else {
+          data.data.map(datum => {
+            entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+            trajectoryData.forEach(element => {
+              // if (datum[element.entity] === element.value) {
+              //   data.config.location.length > 0 && data.config.location.map(loc => (
+              //     tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+              //   ));
+              //   tempTrajectories.color = element.color;
+              //   tempData.push(tempTrajectories);
+              //   tempTrajectories = { latLongs: [] };
+              // }
+
+
+              if (element.visualizations.Clusters) {
+                if (datum[element.entity] === element.value) {
+                  data.config.location.length > 0 && data.config.location.map(loc => (
+                    tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                  tempTrajectories.color = element.color;
+                  temp1.push(tempTrajectories);
+                  tempTrajectories = { latLongs: [] };
+                }
+              }
+              else {
+                data.data.forEach(datum => {
+                  // tempTrajectories[uniqueEntity] = datum[uniqueEntity];
+                  entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+                  data.config.location.length > 0 && data.config.location.forEach(loc => (
+                    tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                  temp1.push(tempTrajectories);
+                  tempTrajectories = { latLongs: [] };
+                });
+              }
+
+              if (element.visualizations.Heatmap) {
+                if (datum[element.entity] === element.value) {
+                  data.config.location.length > 0 && data.config.location.map(loc => (
+                    tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                  tempTrajectories.color = element.color;
+                  temp2.push(tempTrajectories);
+                  tempTrajectories = { latLongs: [] };
+                }
+              }
+              else {
+                data.data.forEach(datum => {
+                  // tempTrajectories[uniqueEntity] = datum[uniqueEntity];
+                  entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+                  data.config.location.length > 0 && data.config.location.forEach(loc => (
+                    tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                  temp2.push(tempTrajectories);
+                  tempTrajectories = { latLongs: [] };
+                });
+              }
+
+              if (element.visualizations.Trajectory) {
+                if (datum[element.entity] === element.value) {
+                  data.config.location.length > 0 && data.config.location.map(loc => (
+                    tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                  tempTrajectories.color = element.color;
+                  temp3.push(tempTrajectories);
+                  tempTrajectories = { latLongs: [] };
+                }
+              }
+              else {
+                data.data.forEach(datum => {
+                  // tempTrajectories[uniqueEntity] = datum[uniqueEntity];
+                  entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+                  data.config.location.length > 0 && data.config.location.forEach(loc => (
+                    tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                  temp3.push(tempTrajectories);
+                  tempTrajectories = { latLongs: [] };
+                });
+              }
+
+              if (element.visualizations['2D chart']) {
+                if (datum[element.entity] === element.value) {
+                  data.config.location.length > 0 && data.config.location.map(loc => (
+                    tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                  tempTrajectories.color = element.color;
+                  temp4.push(tempTrajectories);
+                  tempTrajectories = { latLongs: [] };
+                }
+              }
+              else {
+                data.data.forEach(datum => {
+                  // tempTrajectories[uniqueEntity] = datum[uniqueEntity];
+                  entities && entities.map(entity => { return (tempTrajectories[entity] = datum[entity]); });
+                  data.config.location.length > 0 && data.config.location.forEach(loc => (
+                    tempTrajectories.latLongs.push([datum[loc.lat], datum[loc.long]])
+                  ));
+                  temp4.push(tempTrajectories);
+                  tempTrajectories = { latLongs: [] };
+                });
+              }
+            });
+            return tempData;
+          }
+          );
+        }
+        setClusterData(temp1);
+        setHeatMapData(temp2);
+        setTrajectoriesData(temp3);
+        setChartData(temp4);
+      }
+      // setTrajectories(tempData);
+      if (temp4 !== undefined && temp4 !== null && temp4.length > 0
+      ) {
+        let tempPie = [];
+        temp4.map((item) => {
+          tempPie.push({
+            name: item[uniqueEntity],
+            value: item.latLongs.length
+          });
+          return item;
+        });
+        setPieData(tempPie);
+      }
+      else if (tempData !== undefined && tempData) {
+        let tempPie = [];
+        tempData.map((item) => {
+          tempPie.push({
+            name: item[uniqueEntity],
+            value: item.latLongs.length
+          });
+          return item;
+        });
+        setPieData(tempPie);
+      }
+      setElevations(tempElevation);
+      if (data.visualizations) {
+        let keys = Object.keys(data.visualizations);
+
+        if (tempElevation.length === 0) {
+          delete keys.filter(o => o !== 'Heatmap');
+        }
+        console.log('KEYS', keys);
+        setVisualizations(keys);
+      }
     }
-    else {
-      setPieData([]);
-    }
-  }, [chartData, uniqueEntity, selectedVisualization]);
+  }, [data, trajectoryData, uniqueEntity, entities]);
 
   useEffect(() => {
     if (propsValue === 1) {
@@ -341,23 +620,26 @@ export const MappingTool = (props) => {
   }, [propsValue]);
 
   useEffect(() => {
-    if (uniqueUpdate && heatMapData !== undefined && heatMapData && heatMapData.length > 0 && selectedVisualization.Heatmap) {
-      let temp = [];
+    let temp = [];
+    heatMapData.length > 0 &&
       heatMapData.map(item => (
-        item && item.data && item.data.map(element => (
-          temp.push([element[data.config.location[0].lat], element[data.config.location[0].long], element[elevation !== '' ? elevations.length > 0 && elevations[0] : elevation]])
+        item.latLongs.map(element => (
+          temp.push([element[0], element[1], item[elevation]])
         ))
       ));
-      setHeatMapPoints(temp);
-    }
-  }, [heatMapData, elevation, data, elevations, selectedVisualization, uniqueUpdate]);
+    setHeatMapPoints(temp);
+  }, [heatMapData, elevation]);
 
+  useEffect(() => {
+    console.log(chartData);
+  }, [chartData]);
 
   const addFile = (doc) => {
     setLoading(true);
     let formData = new FormData();
     formData.append('documentFile', doc[0]);
     API.uploadDocument(formData, (data) => { setLoading(false); setCsvUrl(data); setFile(doc); API.getFieldNames({ csvLink: data }, setFieldValues); });
+
   };
   // const addLocation = () => {
   //   if (valueLocation !== '' && latitude !== '' && longitude !== '') {
@@ -419,9 +701,12 @@ export const MappingTool = (props) => {
         return consists;
       });
       if (!consists) {
+        let tempData = { latLongs: [], color: '' };
         let tempTrajectory = { visualizations: selectedFilterVisualization };
-        tempTrajectory.entityName = selectedEntity;
-        tempTrajectory.entityValue = entityValue;
+        tempTrajectory.color = color;
+        tempTrajectory.entity = selectedEntity;
+        tempTrajectory.value = entityValue;
+        tempData.color = color;
         setTrajectoryData([...trajectoryData, tempTrajectory]);
         setEntityValue('');
         setSelectedEntity('');
@@ -435,7 +720,7 @@ export const MappingTool = (props) => {
     }
   };
 
-  const handleTrajectoryForPie = (selectedEntity1, entityValue1) => {
+  const handleTrajectoryForPie = (selectedEntity1, entityValue1, color) => {
     if (data && selectedEntity1 !== '' && entityValue1 !== '') {
       let consists = false;
       trajectoryData.map(element => {
@@ -448,9 +733,12 @@ export const MappingTool = (props) => {
         return consists;
       });
       if (!consists) {
+        let tempData = { latLongs: [], color: '' };
         let tempTrajectory = { visualizations: selectedFilterVisualization };
-        tempTrajectory.entityName = selectedEntity1;
-        tempTrajectory.entityValue = entityValue1;
+        tempTrajectory.color = color;
+        tempTrajectory.entity = selectedEntity1;
+        tempTrajectory.value = entityValue1;
+        tempData.color = color;
         setTrajectoryData([...trajectoryData, tempTrajectory]);
       }
       else {
@@ -483,7 +771,7 @@ export const MappingTool = (props) => {
   // };
 
   const handleDeleteTrajectoryData = chipToDelete => () => {
-    setTrajectoryData(chips => chips.filter(chip => (chip.entityValue !== chipToDelete.entityValue || chip.entityName !== chipToDelete.entityName)));
+    setTrajectoryData(chips => chips.filter(chip => (chip.value !== chipToDelete.value || chip.entity !== chipToDelete.entity)));
   };
 
   const handleConfigData = (type, chipToDelete) => () => {
@@ -537,20 +825,23 @@ export const MappingTool = (props) => {
     // getDataFromFile();
   };
 
+  useEffect(() => {
+    console.log(dialogOpen);
+  }, [dialogOpen]);
 
   const resetTimeline = () => {
-    setSelectedDateStart(data.startDate ? data.startDate : new Date('2020-01-01T00:00:00'));
+    setSelectedDateStart(new Date('2020-01-01T00:00:00'));
     setSelectedPeriod(0);
     setTimelineStatus(false);
     setIsActive(false);
-    // getDataFromFile();
+    getDataFromFile();
   };
 
-  // useEffect(() => {
-  //   if (timelineStatus) {
-  //     getDataFromFile();
-  //   }
-  // }, [timelineStatus, selectedDateStart]);
+  useEffect(() => {
+    if (timelineStatus) {
+      getDataFromFile();
+    }
+  }, [timelineStatus, selectedDateStart]);
   useEffect(() => {
     function progress() {
       setCompleted((prevCompleted) => (prevCompleted >= 100 ? 0 : prevCompleted + 25));
@@ -576,6 +867,11 @@ export const MappingTool = (props) => {
     setTrajectoryOptions({ ...trajectoryOptions, [event.target.name]: event.target.checked });
   };
 
+  const onDrag = (e) => {
+    setColor(e.hex);
+    setTrajectoryOptions({ ...trajectoryOptions, 'color': e.hex });
+  };
+
   const MakeshiftDrawer = (open) => {
     return (
       <Slide direction="right" in={open} mountOnEnter unmountOnExit style={{ overflowY: 'scroll', overflowX: 'hidden', height: '50vh' }}>
@@ -586,6 +882,81 @@ export const MappingTool = (props) => {
             </IconButton>
           </Grid>
           <Grid container item xs={12} spacing={2} direction='row'>
+            {/* <Grid container item alignItems='center'>
+              <Grid item xs={10}>
+                <TextField
+                  id="getLocation "
+                  labeltext="Location *"
+                  required
+                  variant='outlined'
+                  inputProps={{
+                    placeholder: 'Suburb ',
+                    name: 'location ',
+                    autoComplete: 'hidden',
+                    value: valueLocation !== '' ? valueLocation : '',
+                    onChange: e => {
+                      getLocation(e.target.value);
+                      setValueLocation(e.target.value);
+                    }
+                  }}
+                />
+                {suggestedLocations !== undefined ? (
+                  <Grid container>
+                    {suggestedLocations.map((location, key) => {
+                      return (
+                        <Grid item key={key} xs={12}>
+                          <Typography
+                            variant="caption"
+                            onClick={e => {
+                              getLatLong(location.locationId);
+                              setValueLocation(e.target.innerText);
+                              setSuggestedLocations([]);
+                            }}
+                          >
+                            {location.address.district}
+                          </Typography>
+                        </Grid>
+                      );
+                    })}
+                  </Grid>
+                ) : ('')}
+              </Grid> 
+               <Grid item xs={2}>
+                <IconButton onClick={addLocation} variant='outlined' color='secondary'><AddIcon /></IconButton>
+              </Grid> 
+            </Grid>
+            <Grid container item spacing={2}>
+              {chipData.length !== 0 && chipData.map((data, i) => {
+                return (
+                  <Grid item key={i} >
+                    <Chip
+                      key={data.suburb}
+                      label={data.suburb}
+                      onDelete={handleDelete(data)}
+                      className={classes.chip}
+                      style={{ backgroundColor: data.color }}
+                    />
+                  </Grid>
+                );
+              })}
+            </Grid>
+            */}
+            {/* <Grid item xs={12}>
+              <TextField
+                select
+                variant='outlined'
+                value={selectedStatus}
+                label='Status'
+                fullWidth
+                onChange={(e) => setSelectedStatus(e.target.value)}
+              >
+                {statuses.map(option => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid> */}
             <Grid item>
               <Typography variant='h6'>Visualizations</Typography>
             </Grid>
@@ -664,7 +1035,7 @@ export const MappingTool = (props) => {
                 </Grid>
                 {uniqueEntity && uniqueEntity !== '' &&
                   <Grid container item xs={12} justify='flex-end'>
-                    <Button onClick={() => { setUniqueEntity(''); setUniqueUpdate(false); }}>Reset</Button>
+                    <Button onClick={() => setUniqueEntity('')}>Reset</Button>
                   </Grid>
                 }
                 <Grid item xs={12}>
@@ -688,9 +1059,9 @@ export const MappingTool = (props) => {
                     <Grid item xs={12}>
                       <TextField variant='outlined' label='Value' value={entityValue} onChange={(e) => setEntityValue(e.target.value)} />
                     </Grid>
-                    {/* <Grid item xs={12}>
+                    <Grid item xs={12}>
                       <SketchPicker disableAlpha={true} color={trajectoryOptions.color} onChangeComplete={onDrag} name='color' />
-                    </Grid> */}
+                    </Grid>
                     <Grid item xs={12}>
                       <IconButton variant='outlined' color='secondary' onClick={() => { setDialogOpen({ ...dialogOpen, state: true, type: 'map' }); }} ><AddIcon /></IconButton>
                     </Grid>
@@ -702,9 +1073,10 @@ export const MappingTool = (props) => {
                       <Grid item key={i} >
                         <Chip
                           key={i}
-                          label={data.entityName + ' ' + data.entityValue}
+                          label={data.entity + ' ' + data.value}
                           onDelete={handleDeleteTrajectoryData(data)}
                           className={classes.chip}
+                          style={{ backgroundColor: data.color }}
                         />
                       </Grid>
                     );
@@ -712,7 +1084,7 @@ export const MappingTool = (props) => {
                 </Grid>
               </Grid>
             }
-            {initialDate && data && data.config && data.config.date && dateKey &&
+            {initialDate && data && data.config && data.config.date &&
               <>
                 <Grid container justify='center' spacing={2}>
                   <MuiPickersUtilsProvider utils={DateFnsUtils}>
@@ -873,8 +1245,8 @@ export const MappingTool = (props) => {
             name: 'Clusters',
             jsx:
               <MarkerClusterGroup >
-                {uniqueEntity === '' && trajectoryData.length === 0 ?
-                  uniqueUpdate && clusterData !== undefined && clusterData && clusterData.length > 0 && clusterData.map((item, index) => {
+                {uniqueEntity === '' ?
+                  data && data.data.map((item, index) => {
                     return (
                       <Marker key={index} position={[item[(data.config.location[0].lat)], item[(data.config.location[0].long)]]} >
                         {/* icon={image[(item.user.covidStatus)] === '' ? createIcon(item.user.covidStatus) : createIconViaLink(image[(item.user.covidStatus)])}> */}
@@ -886,13 +1258,13 @@ export const MappingTool = (props) => {
                       </Marker>
                     );
                   }) :
-                  uniqueUpdate && clusterData !== undefined && clusterData && clusterData.length > 0 && clusterData.map((item) => (
-                    item && item.data && item.data.map((element) => (
-                      <Marker key={Math.random()} position={[element[(data.config.location[0].lat)], element[(data.config.location[0].long)]]} >
+                  clusterData.map((item) => (
+                    item.latLongs.map((element) => (
+                      <Marker key={Math.random()} position={element} >
                         {/* icon={image[(item.user.covidStatus)] === '' ? createIcon(item.user.covidStatus) : createIconViaLink(image[(item.user.covidStatus)])}> */}
                         <Popup>
                           {data.config.entities.map((entity) => (
-                            <Typography key={Math.random()}>{`${entity} : ${element[entity]}`}</Typography>
+                            <Typography key={Math.random()}>{`${entity} : ${item[entity]}`}</Typography>
                           ))}
                         </Popup>
                       </Marker>
@@ -910,18 +1282,17 @@ export const MappingTool = (props) => {
             name: 'Heatmap',
             jsx: (
               <>
-                {uniqueEntity === '' && trajectoryData.length === 0 ?
-                  uniqueUpdate && heatMapData && heatMapData !== undefined && heatMapData.length > 0 &&
-                  < HeatmapLayer
+                {uniqueEntity === '' ?
+                  <HeatmapLayer
                     fitBoundsOnLoad
                     fitBoundsOnUpdate
-                    points={heatMapData}
+                    points={data.data}
                     longitudeExtractor={m => m[(data.config.location[0].long)]}
                     latitudeExtractor={m => m[(data.config.location[0].lat)]}
                     intensityExtractor={m => parseFloat(m[elevation] ? m[elevation] : m[data.config.entities[0]])} />
                   :
                   <>
-                    {uniqueUpdate && heatMapPoints && heatMapPoints !== undefined && heatMapPoints.length > 0 &&
+                    {heatMapPoints.length > 0 &&
                       <HeatmapLayer
                         key={Math.random()}
                         fitBoundsOnLoad
@@ -929,7 +1300,7 @@ export const MappingTool = (props) => {
                         points={heatMapPoints}
                         longitudeExtractor={m => m[1]}
                         latitudeExtractor={m => m[0]}
-                        intensityExtractor={m => m[2]} />
+                        intensityExtractor={m => parseFloat(m[2] ? m[2] : m[data.config.entities[0]])} />
                     }
                     ))
                   </>
@@ -945,15 +1316,15 @@ export const MappingTool = (props) => {
             name: 'Trajectory',
             jsx:
               <>
-                {uniqueUpdate && uniqueEntity !== '' && trajectoriesData !== undefined && trajectoriesData && trajectoriesData.length > 0 && trajectoriesData.map((item, i) => (
-                  item && item.latLongs &&
-                  <AntPath key={i} positions={item.latLongs} options={{ color: randomColor(), reverse: trajectoryOptions.reverse, paused: trajectoryOptions.paused, delay: 800 }} >
+                {trajectoriesData.map((item, i) => (
+                  <AntPath key={i} positions={item.latLongs} options={{ color: item.color && item.color !== '' ? item.color : 'red', reverse: trajectoryOptions.reverse, paused: trajectoryOptions.paused, delay: 800 }} >
                     <Popup>
-                      <Typography key={Math.random()}>{`${uniqueEntity} : ${item[uniqueEntity]}`}</Typography>
+                      {data.config.entities.map((entity) => (
+                        <Typography key={Math.random()}>{`${entity} : ${item[entity]}`}</Typography>
+                      ))}
                     </Popup>
                   </AntPath>
-                ))
-                }
+                ))}
               </>
           }
         );
@@ -1009,13 +1380,7 @@ export const MappingTool = (props) => {
             </Grid>
             :
             <Grid container item xs={12}>
-              <Grid container item xs={4} spacing={2}>
-                <Grid item xs={4}>
-                  <Typography>Workspace Name</Typography>
-                </Grid>
-                <Grid item xs={8}>
-                  <TextField variant='outlined' value={dataName} onChange={(e) => setDataName(e.target.value)} />
-                </Grid>
+              <Grid container item xs={8} spacing={2}>
                 <Grid item xs={4}>
                   <Typography>Latitude</Typography>
                 </Grid>
@@ -1114,15 +1479,14 @@ export const MappingTool = (props) => {
                 </Grid>
                 <Grid item>
                   <Button color='secondary' variant='outlined' onClick={() => {
-                    setFile(); setInitialLocation([]); setInitialEntities([]);
+                    setFile(); setData(); setInitialLocation([]); setInitialEntities([]);
                     setInitialDate('');
                   }}>Reset Data</Button>
                 </Grid>
 
                 <Grid item>
                   <Button color='primary' variant='outlined' onClick={() => {
-                    getDataFromFile();
-                    setSelectedVisualization({
+                    getDataFromFile(); setSelectedVisualization({
                       Clusters: false,
                       Heatmap: false,
                       Trajectory: false,
@@ -1190,7 +1554,7 @@ export const MappingTool = (props) => {
                   <Button onClick={() => { setDialogOpen({ ...dialogOpen, state: false, type: '' }); }} color="primary">
                     Cancel
                   </Button>
-                  <Button onClick={dialogOpen.type === 'map' ? () => { handleTrajectory(); setDialogOpen({ ...dialogOpen, state: false, type: '' }); } : () => { handleTrajectoryForPie(dialogOpen.data[0], dialogOpen.data[1]); setDialogOpen({ ...dialogOpen, state: false, type: '' }); }} color="primary">
+                  <Button onClick={dialogOpen.type === 'map' ? () => { handleTrajectory(); setDialogOpen({ ...dialogOpen, state: false, type: '' }); } : () => { handleTrajectoryForPie(dialogOpen.data[0], dialogOpen.data[1], dialogOpen.data[2]); setDialogOpen({ ...dialogOpen, state: false, type: '' }); }} color="primary">
                     Submit
                   </Button>
                 </DialogActions>
@@ -1329,7 +1693,6 @@ export const MappingTool = (props) => {
                           onClick={() => {
                             setTrajectoryData([]);
                             setUniqueEntity('');
-                            setUniqueUpdate(false);
                           }} >Reset</Button>
                       </Grid>
                     </Grid>

@@ -142,11 +142,30 @@ class API {
   getDataFromFile = (data, callback) => {
     axiosInstance.post('/visualization/getDataFromFile', data, {
     }).then(response => {
+      return callback(response.data.data)
+    }).catch(error => {
+      errorHelper(error)
+    })
+  }
+
+  getFieldNames = (data, callback) => {
+    axiosInstance.post('/visualization/getFieldNames', data, {
+    }).then(response => {
       return callback(response.data.data.data)
     }).catch(error => {
       errorHelper(error)
     })
   }
+
+  getFilteredData = (data, callback) => {
+    axiosInstance.post('/visualization/getFilteredData', data, {
+    }).then(response => {
+      return callback(response.data.data.data)
+    }).catch(error => {
+      errorHelper(error)
+    })
+  }
+
 }
 const instance = new API();
 export default instance;

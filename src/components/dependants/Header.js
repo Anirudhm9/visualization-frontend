@@ -116,7 +116,7 @@ export const Header = () => {
       </AppBar>
       {
         isItDesktop ? <Drawer
-          variant="permanent"
+          variant="temporary"
           classes={{
             paper: LayoutConfig.sideMenu.permanent ? classes.drawerPaper : clsx(classes.drawerPaper, !open && classes.drawerPaperClose),
           }}
