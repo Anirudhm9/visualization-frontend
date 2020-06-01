@@ -345,7 +345,7 @@ export const MappingTool = (props) => {
       let temp = [];
       heatMapData.map(item => (
         item && item.data && item.data.map(element => (
-          temp.push([element[data.config.location[0].lat], element[data.config.location[0].long], element[elevation !== '' ? elevations.length > 0 && elevations[0] : elevation]])
+          temp.push({ lat: element[data.config.location[0].lat], long: element[data.config.location[0].long], elevation: element[elevation !== '' ? elevations.length > 0 && elevations[0] : elevation] })
         ))
       ));
       setHeatMapPoints(temp);
@@ -918,7 +918,7 @@ export const MappingTool = (props) => {
                     points={heatMapData}
                     longitudeExtractor={m => m[(data.config.location[0].long)]}
                     latitudeExtractor={m => m[(data.config.location[0].lat)]}
-                    intensityExtractor={m => parseFloat(m[elevation] ? m[elevation] : m[data.config.entities[0]])} />
+                    intensityExtractor={m => parseFloat(m[elevation] ? m[elevation] : m[elevations[0]])} />
                   :
                   <>
                     {uniqueUpdate && heatMapPoints && heatMapPoints !== undefined && heatMapPoints.length > 0 &&
